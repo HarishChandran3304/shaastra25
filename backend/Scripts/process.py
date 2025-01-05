@@ -2,7 +2,6 @@ from llama_index.llms.gemini import Gemini
 from llama_index.core import Document
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core import Settings
-#
 from llama_index.core.tools import QueryEngineTool
 from llama_index.core.query_engine.router_query_engine import RouterQueryEngine
 from llama_index.core.selectors import LLMSingleSelector
