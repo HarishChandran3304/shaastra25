@@ -4,7 +4,7 @@
 - Harish Chandran
 - Idhikash J
 - Neeraj S
-- Toby Vincent
+- Toby Vincent John
 
 ## Data
 [ESG Indicators Data](https://gist.github.com/HarishChandran3304/72166c118e45869a92d13ca65ca908bd) 
