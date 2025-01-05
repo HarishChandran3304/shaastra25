@@ -276,20 +276,20 @@ class DocumentQuerySystem:
         self.query_engine_builder.build_query_engine()
     def summarize(self):        
         summarization_prompt = f"""
-        Please provide a comprehensive ESG (Environmental, Social, and Governance) summary of the following company document. 
+        Please provide a detailed summary of all events, activities, or occurrences mentioned in the following company document that can potentially impact the company's Environmental (E), Social (S), and Governance (G) values. 
         The summary should:
-        1. Identify key points and topics related to ESG aspects, including environmental impact, social responsibility, and governance practices.
-        2. Highlight significant ESG-related findings or conclusions from the document.
-        3. Outline any major ESG recommendations, goals, or action items presented.
-        4. Provide relevant metrics or initiatives related to the company's ESG performance or strategy (if available).
-        5. Be concise yet informative, aiming for about 300 words, while focusing exclusively on ESG-related content.
+        1. Identify and categorize each event under Environmental, Social, or Governance aspects, clearly stating how it may affect the respective value.
+        2. Highlight any significant trends, actions, or incidents related to these ESG categories.
+        3. Provide brief explanations of why each event is relevant to ESG considerations.
+        4. Be concise yet comprehensive, aiming for about 300 words, and ensure all potential ESG-impacting events are listed and categorized appropriately.
 
-        Document to summarize:
+        Document to analyze:
 
         {self.document_processor.full_text}
 
-        ESG Summary:
+        ESG Event Summary:
         """
+
 
         response = llm.complete(summarization_prompt)
         return response
@@ -307,8 +307,8 @@ def extract_json_with_regex(response_text):
     Returns:
         str: Extracted JSON string or None if not found.
     """
-    json_pattern = re.compile(r'(\{[\s\S]*\})')  
-    match = json_pattern.search(response_text)
+    response_text = str(response_text)  # Ensure response_text is a string
+    match = re.search(r'(\{[\s\S]*\})', response_text)
     return match.group(1) if match else None
 
 
@@ -368,34 +368,34 @@ def answer_with_llm(scenario: str,string="") -> dict:
     """
     # Construct the prompt for the LLM
     prompt = f"""
-You are an assistant evaluating businesses based on how their esg data would be. Your goal is to know the businesses's projects and relevant ESG scores alone clearly. 
-Based on the input scenario:
-- If you are certain about the businesses's PERSONA to be able to evaluate their ESG scores, respond with "status: 1" and a thank-you message.
-- If you have any uncertainty, respond with "status: 0" and a follow-up question requesting more clarification.
-- Ask at least 2 doubts
-The input scenario is:
-"{scenario}"
+    You are an assistant evaluating businesses based on how their esg data would be. Your goal is to know the businesses's projects and relevant ESG scores alone clearly. 
+    Based on the input scenario:
+    - If you are certain about the businesses's PERSONA to be able to evaluate their ESG scores, respond with "status: 1" and a thank-you message.
+    - If you have any uncertainty, respond with "status: 0" and a follow-up question requesting more clarification.
+    - Ask at least 2 doubts
+    The input scenario is:
+    "{scenario}"
 
-Here are two examples of how you should respond:
+    Here are two examples of how you should respond:
 
-Example 1 (When the LLM still has uncertainty):
-Scenario: "I am still a bit uncertain about the process."
-Response:
-{{
-    "response": "Could you clarify or provide more details about this topic(describe the topic)",
-    "status": 0
-}}
+    Example 1 (When the LLM still has uncertainty):
+    Scenario: "I am still a bit uncertain about the process."
+    Response:
+    {{
+        "response": "Could you clarify or provide more details about this topic(describe the topic)",
+        "status": 0
+    }}
 
-Example 2 (When the LLM is clear and understands everything):
-Scenario: "Everything is clear and I have no doubts."
-Response:
-{{
-    "response": "Thank you! I have understood everything.",
-    "status": 1
-}}
+    Example 2 (When the LLM is clear and understands everything):
+    Scenario: "Everything is clear and I have no doubts."
+    Response:
+    {{
+        "response": "Thank you! I have understood everything.",
+        "status": 1
+    }}
 
-Please respond with ONLY the JSON object, nothing else.
-"""
+    Please respond with ONLY the JSON object, nothing else.
+    """
 
     llm_response = llm.complete(prompt)
 
@@ -421,14 +421,78 @@ def interact_with_user(summary:str):
             scenario = input("Your clarification or follow-up: ")
             string=string+"\n"+scenario
 
+def extract_and_validate_json( text):
+    pattern = r"\[.*\]"
+    matches = re.findall(pattern, text, re.DOTALL)
+        
+    if matches:
+        json_text = matches[-1]  
+        try:
+            json_data = json.loads(json_text)
+                # if self.validate_json_structure(json_data):
+            return json_data
+                # else:
+                #     return "JSON structure is not sufficiently detailed or well-structured."
+        except json.JSONDecodeError:
+            return f" JSON not proper in the output.{text}"
+    else:
+        return f"No JSON found in the output.{text}"
+
+
+
+def return_metrics(summary: str):
+    summarization_prompt = f"""
+    Instruction:
+    Using the provided summary of ESG-affecting events, generate a JSON object that categorizes the Environmental (E), Social (S), and Governance (G) indicators based on their relevance to the described events. For each category, include a list of indicators, where each indicator is represented as an object with the following fields:
+
+    - **indicator**: The name of the indicator relevant to the events.
+    - **weight**: The weight of the indicator (a number between 0 and 1). The sum of all weights within each category must equal 1.
+    - **score**: The raw score of the indicator (a number between 0 and 100), reflecting the company's performance in this area based on the described events.
+
+    Example JSON Format:
+    {{
+    "E": [
+        {{ "indicator": "Carbon Emissions", "weight": 0.4, "score": 85 }},
+        {{ "Energy Efficiency", "weight": 0.3, "score": 90 }},
+        {{ "Water Usage", "weight": 0.3, "score": 75 }}
+    ],
+    "S": [
+        {{ "indicator": "Labor Practices", "weight": 0.5, "score": 80 }},
+        {{ "Diversity & Inclusion", "weight": 0.3, "score": 70 }},
+        {{ "Community Engagement", "weight": 0.2, "score": 85 }}
+    ],
+    "G": [
+        {{ "indicator": "Board Independence", "weight": 0.4, "score": 90 }},
+        {{ "Executive Compensation", "weight": 0.3, "score": 70 }},
+        {{ "Transparency", "weight": 0.3, "score": 80 }}
+    ]
+    }}
+
+    **Input:**
+    Summary of ESG-Affecting Events:
+    {summary}
+
+    **Task:**
+    Based on the provided summary, create a JSON object with:
+    1. Indicators that best align with the events described in the document.
+    2. Appropriate weights for each indicator within E, S, and G, ensuring the weights sum to 1 for each category.
+    3. Relevant scores for each indicator, reflecting the company's performance as suggested by the described events.
+
+    **Output:**
+    Return the JSON object formatted as shown in the example.
+    """
+    response = llm.complete(summarization_prompt)
+    return extract_and_validate_json(extract_json_with_regex(response))
+
 
 
 if __name__ == "__main__":
     pdf_url = "/home/shadowx/shaastra25/backend/assets/NASDAQ_AAPL_2023.pdf"
     query_system = DocumentQuerySystem(pdf_url)
     response = query_system.summarize()
-    print(response)
-    interact_with_user(response)
+    print(return_metrics(response))
+    #print(response)
+    #interact_with_user(response)
     #print(str(response))
     # Cyber_obj=CybersecurityFindingsExtractor()
     # findings=Cyber_obj.extract_findings()
