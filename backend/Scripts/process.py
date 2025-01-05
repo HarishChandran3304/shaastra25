@@ -11,9 +11,9 @@ import nest_asyncio
 import pymupdf4llm
 from llama_index.core import SummaryIndex, VectorStoreIndex
 from langchain_google_vertexai import VertexAIEmbeddings
-PROJECT_ID = 'white-watch-436805-d1'
-REGION = 'us-central1'
-MODEL_ID = 'text-embedding-004'
+# PROJECT_ID = 'white-watch-436805-d1'
+# REGION = 'us-central1'
+# MODEL_ID = 'text-embedding-004'
 import os
 class DocumentProcessor:
     def __init__(self, pdf_url="2020-21CyberSecurity.pdf"):
@@ -45,16 +45,16 @@ class EmbeddingModel:
 class IndexBuilder:
     def __init__(self, nodes):
         self.nodes = nodes
-        self.summary_index = None
+        #self.summary_index = None
         self.vector_index = None
 
     def build_indices(self):
-        self.summary_index = SummaryIndex(self.nodes)
+        #self.summary_index = SummaryIndex(self.nodes)
         self.vector_index = VectorStoreIndex(self.nodes)
 
 class QueryEngineBuilder:
     def __init__(self, summary_index, vector_index):
-        self.summary_index = summary_index
+        #self.summary_index = summary_index
         self.vector_index = vector_index
         self.query_engine = None
 
@@ -65,10 +65,10 @@ class QueryEngineBuilder:
         )
         vector_query_engine = self.vector_index.as_query_engine(vector_store_query_mode="mmr",vector_store_kwargs={"mmr_threshold":0.2})
 
-        summary_tool = QueryEngineTool.from_defaults(
-            query_engine=summary_query_engine,
-            description="Useful for summarization questions related to the cybersecurity audit report"
-        )
+        # summary_tool = QueryEngineTool.from_defaults(
+        #     query_engine=summary_query_engine,
+        #     description="Useful for summarization questions related to the cybersecurity audit report"
+        # )
 
         vector_tool = QueryEngineTool.from_defaults(
             query_engine=vector_query_engine,
@@ -77,7 +77,7 @@ class QueryEngineBuilder:
 
         self.query_engine = RouterQueryEngine(
             selector=LLMSingleSelector.from_defaults(),
-            query_engine_tools=[summary_tool, vector_tool],
+            query_engine_tools=[vector_tool],
             verbose=True
         )
 
@@ -290,9 +290,9 @@ class DocumentQuerySystem:
     def query(self, question):
         return self.query_engine_builder.query_engine.query(question)
 if __name__ == "__main__":
-    pdf_url = "2020-21CyberSecurity.pdf"
+    pdf_url = "/home/shadowx/shaastra25/backend/assets/NASDAQ_AAPL_2023.pdf"
     query_system = DocumentQuerySystem(pdf_url)
-    #response = query_system.summarize()
+    response = query_system.summarize()
     #print(str(response))
     # Cyber_obj=CybersecurityFindingsExtractor()
     # findings=Cyber_obj.extract_findings()
