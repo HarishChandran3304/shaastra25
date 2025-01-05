@@ -25,6 +25,7 @@ class ProjectSummaryBase(BaseModel):
     S_score: int
     G_score: int
     ESG_score: int
+    summary: str
 
 class ProjectSummaryCreate(ProjectSummaryBase):
     projectid: int
@@ -55,7 +56,6 @@ class ProjectChat(ProjectChatBase):
 class ProjectBase(BaseModel):
     company_name: str
     title: str
-    summary: str
     cost: int
 
 class ProjectCreate(ProjectBase):

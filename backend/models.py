@@ -21,7 +21,6 @@ class Project(Base):
     company_name = Column(String)
     title = Column(String)
     create_date = Column(DateTime)
-    summary = Column(String)
     cost = Column(Integer)
 
     organization = relationship("Organization", back_populates="projects")
@@ -44,6 +43,7 @@ class ProjectSummary(Base):
 
     summaryid = Column(Integer, primary_key=True, index=True)
     projectid = Column(Integer, ForeignKey("projects.projectid"))
+    summary = Column(String)
     E_score = Column(Integer)
     S_score = Column(Integer)
     G_score = Column(Integer)
@@ -62,3 +62,10 @@ class ProjectMetrics(Base):
     value = Column(Integer)
 
     project = relationship("Project", back_populates="project_metrics")
+
+class Attachments(Base):
+    __tablename__ = "attachments"
+
+    file_name = Column(String, primary_key=True, index=True)
+    file_path = Column(String)
+    summary = Column(String)

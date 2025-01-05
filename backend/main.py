@@ -1,13 +1,35 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, WebSocket
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from typing import List
 
+import shutil
+import os
+from datetime import datetime
+from pathlib import Path
+import asyncio
+
 import models, schemas
 from db import engine, get_db
+from Scripts.process import DocumentQuerySystem, answer_with_llm
+
+
+UPLOAD_DIR = Path("uploads/")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 @app.post("/organizations/", response_model=schemas.Organization)
 def create_organization(organization: schemas.OrganizationCreate, db: Session = Depends(get_db)):
@@ -108,3 +130,75 @@ def read_project_metrics(metric_id: int, db: Session = Depends(get_db)):
     if db_project_metrics is None:
         raise HTTPException(status_code=404, detail="Project Metrics not found")
     return db_project_metrics
+
+
+@app.post("/upload/")
+async def upload_pdf(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    try:
+        # Verify file type
+        if not file.content_type == "application/pdf":
+            return JSONResponse(
+                status_code=400,
+                content={"message": "Only PDF files are allowed"}
+            )
+        
+        # Create unique filename using timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        secure_filename = f"{timestamp}_{file.filename}"
+        file_path = UPLOAD_DIR / secure_filename
+        
+        # Save the file
+        with file_path.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        # Summarize the document
+        query_system = DocumentQuerySystem(file_path)
+        response = query_system.summarize()
+        print(response.text)
+
+        # Add to database
+        db_attachment = models.Attachments(file_name=secure_filename, file_path=str(file_path), summary=response.text)
+        print(db_attachment.summary)
+        db.add(db_attachment)
+        db.commit()
+        db.refresh(db_attachment)
+        
+        return {
+            "filename": secure_filename,
+            "file_path": str(file_path),
+            "summary": response,
+            "message": "File uploaded successfully"
+        }
+    
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"message": f"An error occurred: {str(e)}"}
+        )
+    
+    finally:
+        file.file.close()
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket, filename: str, db: Session = Depends(get_db)):
+    await websocket.accept()
+
+    summary = db.query(models.Attachments, ).filter(models.Attachments.file_name == filename).first().summary
+    if summary is None:
+        await websocket.send_text("File not found")
+        return
+    
+    scenario = "Summary until now: " + str(summary)
+    string = f'''The user's responses till now: '''
+
+    while True:
+        result = answer_with_llm(scenario, string)
+        await websocket.send_text(result["response"])
+
+        if result["status"] == 1:
+            print("Conversation ended")
+            break
+
+        else:
+            scenario = await websocket.receive_text()
+            string += "\n" + scenario
