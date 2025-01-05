@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, JSON
 from sqlalchemy.orm import relationship
 from db import Base
 
@@ -25,3 +25,40 @@ class Project(Base):
     cost = Column(Integer)
 
     organization = relationship("Organization", back_populates="projects")
+    project_chats = relationship("ProjectChat", back_populates="project")
+    project_summaries = relationship("ProjectSummary", back_populates="project")
+    project_metrics = relationship("ProjectMetrics", back_populates="project")
+
+class ProjectChat(Base):
+    __tablename__ = "project_chats"
+
+    chatid = Column(Integer, primary_key=True, index=True)
+    projectid = Column(Integer, ForeignKey("projects.projectid"))
+    chat_history = Column(JSON)
+    terminated = Column(Integer)  # 0 if not terminated, 1 if terminated
+
+    project = relationship("Project", back_populates="project_chats")
+
+class ProjectSummary(Base):
+    __tablename__ = "project_summaries"
+
+    summaryid = Column(Integer, primary_key=True, index=True)
+    projectid = Column(Integer, ForeignKey("projects.projectid"))
+    E_score = Column(Integer)
+    S_score = Column(Integer)
+    G_score = Column(Integer)
+    ESG_score = Column(Integer)
+
+    project = relationship("Project", back_populates="project_summaries")
+
+class ProjectMetrics(Base):
+    __tablename__ = "project_metrics"
+
+    id = Column(Integer, primary_key=True, index=True)
+    projectid = Column(Integer, ForeignKey("projects.projectid"))
+    metricid = Column(String)
+    metric_name = Column(String)
+    metric_desc = Column(String)
+    value = Column(Integer)
+
+    project = relationship("Project", back_populates="project_metrics")
