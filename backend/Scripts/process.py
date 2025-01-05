@@ -167,7 +167,7 @@ class CybersecurityFindingsExtractor:
     def process_prompt(self, prompt):
         try:
             response = self.llm.complete(prompt)
-            return response.text
+            return response
         except Exception as e:
             return f"An error occurred while processing the prompt: {e}"
 
@@ -276,21 +276,23 @@ class DocumentQuerySystem:
         self.query_engine_builder.build_query_engine()
     def summarize(self):        
         summarization_prompt = f"""
-        Please provide a comprehensive summary of the following document. 
+        Please provide a comprehensive ESG (Environmental, Social, and Governance) summary of the following company document. 
         The summary should:
-        1. Capture the main topics and key points discussed in the document
-        2. Highlight any significant findings or conclusions
-        3. Mention any important recommendations or action items
-        4. Be concise yet informative, aiming for about 500 words
+        1. Identify key points and topics related to ESG aspects, including environmental impact, social responsibility, and governance practices.
+        2. Highlight significant ESG-related findings or conclusions from the document.
+        3. Outline any major ESG recommendations, goals, or action items presented.
+        4. Provide relevant metrics or initiatives related to the company's ESG performance or strategy (if available).
+        5. Be concise yet informative, aiming for about 300 words, while focusing exclusively on ESG-related content.
 
         Document to summarize:
+
         {self.document_processor.full_text}
 
-        Summary:
+        ESG Summary:
         """
 
         response = llm.complete(summarization_prompt)
-        return response.text
+        return response
      
     def query(self, question):
         return self.query_engine_builder.query_engine.query(question)
@@ -326,7 +328,7 @@ def parse_llm_response(response_text, max_retries=3, retry_delay=1.0):
     for attempt in range(max_retries):
         try:
             # Extract raw response text from the LLM response
-    
+            response_text = str(response_text)
             print(response_text)
             json_text = extract_json_with_regex(response_text)
             if not json_text:
@@ -368,9 +370,9 @@ def answer_with_llm(scenario: str,string="") -> dict:
     prompt = f"""
 You are an assistant evaluating businesses based on how their esg data would be. Your goal is to know the businesses's projects and relevant ESG scores alone clearly. 
 Based on the input scenario:
-- If you are certain about the businesses's PERSONA, respond with "status: 1" and a thank-you message.
+- If you are certain about the businesses's PERSONA to be able to evaluate their ESG scores, respond with "status: 1" and a thank-you message.
 - If you have any uncertainty, respond with "status: 0" and a follow-up question requesting more clarification.
-
+- Ask at least 2 doubts
 The input scenario is:
 "{scenario}"
 
@@ -398,13 +400,13 @@ Please respond with ONLY the JSON object, nothing else.
     llm_response = llm.complete(prompt)
 
     # Parse and return the LLM response
-    return parse_llm_response(llm_response.text)
+    return parse_llm_response(llm_response)
 
-def interact_with_user():
+def interact_with_user(summary:str):
     """
     Interactive session with the user.
     """
-    scenario = input("Describe your scenario: ")  # Initial user input
+    scenario = "Summary until now\n"+str(summary)
     string=f'''\nThe user's responses until now:'''
     while True:
         result = answer_with_llm(scenario,string)
@@ -426,7 +428,7 @@ if __name__ == "__main__":
     query_system = DocumentQuerySystem(pdf_url)
     response = query_system.summarize()
     print(response)
-
+    interact_with_user(response)
     #print(str(response))
     # Cyber_obj=CybersecurityFindingsExtractor()
     # findings=Cyber_obj.extract_findings()
