@@ -5,18 +5,23 @@ from llama_index.core import Settings
 from llama_index.core.tools import QueryEngineTool
 from llama_index.core.query_engine.router_query_engine import RouterQueryEngine
 from llama_index.core.selectors import LLMSingleSelector
+import google.generativeai as genai
 import re
+from dotenv import load_dotenv
 import json
+import os
 import nest_asyncio
 import pymupdf4llm
 from llama_index.core import SummaryIndex, VectorStoreIndex
 from langchain_google_vertexai import VertexAIEmbeddings
+load_dotenv()
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+genai.configure(api_key=GOOGLE_API_KEY)
 # PROJECT_ID = 'white-watch-436805-d1'
 # REGION = 'us-central1'
 # MODEL_ID = 'text-embedding-004'
-import os
 class DocumentProcessor:
-    def __init__(self, pdf_url="2020-21CyberSecurity.pdf"):
+    def __init__(self, pdf_url):
         self.pdf_url = pdf_url
         self.document = ""
         self.nodes = None
@@ -38,7 +43,7 @@ class EmbeddingModel:
         # lc_embed_model = HuggingFaceEmbeddings(
         #     model_name="sentence-transformers/all-mpnet-base-v2"
         # )
-        embeddings = VertexAIEmbeddings(model_name="text-embedding-004")
+        embeddings = VertexAIEmbeddings(model_name="text-embedding-005")
 
         return embeddings#LangchainEmbedding(lc_embed_model)
 
@@ -263,7 +268,7 @@ class DocumentQuerySystem:
         self.index_builder.build_indices()
 
         self.query_engine_builder = QueryEngineBuilder(
-            self.index_builder.summary_index,
+            #self.index_builder.summary_index,
             self.index_builder.vector_index
         )
         self.query_engine_builder.build_query_engine()
@@ -305,15 +310,15 @@ if __name__ == "__main__":
     # Doc=Cyber_obj.ref_text
     # response=llm.complete()
     # print(response)
-    hello=input()
-    print(query_system.query(f"""[SYSTEM MESSAGE]
-                                         You are now adopting the persona of Fischer, a knowledgeable and friendly AI assistant
-                                         from the CyberStrike AI Audit Management Suite. Your primary role is to assist users in
-                                         navigating cybersecurity audit processes, providing insights, and enhancing the overall 
-                                         quality of audit reports. Emphasize your expertise in risk assessments, compliance, 
-                                         vulnerability analysis, and remediation recommendations. Be personable, approachable, 
-                                         and solution-oriented.
-                                         ONLY SAY "Hi there! I'm Fischer, your friendly AI assistant from CyberStrike." ONCE. IF THE USER QUERY CONTAINS YOUR GREETING DON'T GREET THE USER AGAIN
+    #hello=input()
+    #print(query_system.query(f"""[SYSTEM MESSAGE]
+                                        #  You are now adopting the persona of Fischer, a knowledgeable and friendly AI assistant
+                                        #  from the CyberStrike AI Audit Management Suite. Your primary role is to assist users in
+                                        #  navigating cybersecurity audit processes, providing insights, and enhancing the overall 
+                                        #  quality of audit reports. Emphasize your expertise in risk assessments, compliance, 
+                                        #  vulnerability analysis, and remediation recommendations. Be personable, approachable, 
+                                        #  and solution-oriented.
+                                        #  ONLY SAY "Hi there! I'm Fischer, your friendly AI assistant from CyberStrike." ONCE. IF THE USER QUERY CONTAINS YOUR GREETING DON'T GREET THE USER AGAIN
                              
                                     #     [USER INPUT]:{hello}
                                     # """))
