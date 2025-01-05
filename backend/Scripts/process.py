@@ -14,6 +14,7 @@ import nest_asyncio
 import pymupdf4llm
 from llama_index.core import SummaryIndex, VectorStoreIndex
 from langchain_google_vertexai import VertexAIEmbeddings
+import time
 load_dotenv()
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 genai.configure(api_key=GOOGLE_API_KEY)
@@ -27,7 +28,7 @@ class DocumentProcessor:
         self.nodes = None
         self.full_text=None
     def process_to_text(self):
-        md_text = pymupdf4llm.to_markdown(self.pdf_url,pages=[1,2,3,4,5,6,7,8,9,10,1])
+        md_text = pymupdf4llm.to_markdown(self.pdf_url,pages=[1,2,3,4,5,6,7,8,9,10,11])
         self.full_text=md_text
         # self.document = Document(text=md_text)
         # splitter = SentenceSplitter(chunk_size=1024)
@@ -294,6 +295,116 @@ class DocumentQuerySystem:
      
     def query(self, question):
         return self.query_engine_builder.query_engine.query(question)
+
+def extract_json_with_regex(response_text):
+    """
+    Extracts the JSON part of the text using a regular expression.
+
+    Args:
+        response_text (str): The raw text response from the LLM.
+
+    Returns:
+        str: Extracted JSON string or None if not found.
+    """
+    json_pattern = re.compile(r'(\{[\s\S]*\})')  
+    match = json_pattern.search(response_text)
+    return match.group(1) if match else None
+
+
+def parse_llm_response(response_text, max_retries=3, retry_delay=1.0):
+    """
+    Extracts and parses the JSON content from a GenerateContentResponse object using regex.
+    Retries if parsing fails.
+
+    Args:
+        llm_response: The GenerateContentResponse object from the LLM.
+        max_retries (int): Maximum number of retries if JSON parsing fails.
+        retry_delay (float): Delay between retries in seconds.
+
+    Returns:
+        dict: Parsed JSON response or an error message if parsing fails.
+    """
+    for attempt in range(max_retries):
+        try:
+            # Extract raw response text from the LLM response
+    
+            print(response_text)
+            json_text = extract_json_with_regex(response_text)
+            if not json_text:
+                raise ValueError("No JSON content found in the response.")
+
+            return json.loads(json_text)
+
+        except (json.JSONDecodeError, ValueError) as e:
+            print(f"Attempt {attempt + 1}: JSON parsing failed with error: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay)  # Retry with a delay
+            else:
+                return {"response": "Failed to parse the LLM response after multiple attempts.", "status": 0}
+        
+        except KeyError as e:
+            return {"response": f"Error accessing required fields: {e}", "status": 0}
+
+
+
+
+
+
+
+
+
+
+
+def answer_with_llm(scenario: str,string="") -> dict:
+    """
+    Sends a scenario to an LLM and processes the response.
+
+    Args:
+        scenario (str): Input describing a scenario.
+
+    Returns:
+        dict: Processed response with keys "response" and "status".
+    """
+    # Construct the prompt for the LLM
+    prompt = f"""
+You are an assistant evaluating businesses based on how their esg data would be. Your goal is to know the businesses's projects and relevant ESG scores alone clearly. 
+Based on the input scenario:
+- If you are certain about the businesses's PERSONA, respond with "status: 1" and a thank-you message.
+- If you have any uncertainty, respond with "status: 0" and a follow-up question requesting more clarification.
+
+The input scenario is:
+"{scenario}"
+
+Here are two examples of how you should respond:
+
+Example 1 (When the LLM still has uncertainty):
+Scenario: "I am still a bit uncertain about the process."
+Response:
+{{
+    "response": "Could you clarify or provide more details about this topic(describe the topic)",
+    "status": 0
+}}
+
+Example 2 (When the LLM is clear and understands everything):
+Scenario: "Everything is clear and I have no doubts."
+Response:
+{{
+    "response": "Thank you! I have understood everything.",
+    "status": 1
+}}
+
+Please respond with ONLY the JSON object, nothing else.
+"""
+
+    llm_response = llm.complete(prompt)
+
+    # Parse and return the LLM response
+    return parse_llm_response(llm_response.text)
+
+
+
+
+
 if __name__ == "__main__":
     pdf_url = "/home/shadowx/shaastra25/backend/assets/NASDAQ_AAPL_2023.pdf"
     query_system = DocumentQuerySystem(pdf_url)
