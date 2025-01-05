@@ -1,8 +1,4 @@
 */venv
 *.env
-<<<<<<< Updated upstream
-key.json
-=======
 *key.json
 *__pycache__/
->>>>>>> Stashed changes
