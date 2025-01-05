@@ -18,6 +18,7 @@ import time
 load_dotenv()
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 genai.configure(api_key=GOOGLE_API_KEY)
+llm=Gemini()
 # PROJECT_ID = 'white-watch-436805-d1'
 # REGION = 'us-central1'
 # MODEL_ID = 'text-embedding-004'
@@ -264,7 +265,7 @@ class DocumentQuerySystem:
         self.document_processor = DocumentProcessor(pdf_url)
         self.document_processor.process_to_text()
         self.document_processor.process_to_nodes()
-
+        self.full_text=self.document_processor.full_text
         self.index_builder = IndexBuilder(self.document_processor.nodes)
         self.index_builder.build_indices()
 
@@ -273,9 +274,7 @@ class DocumentQuerySystem:
             self.index_builder.vector_index
         )
         self.query_engine_builder.build_query_engine()
-    def summarize(self):
-        llm = Gemini()
-        
+    def summarize(self):        
         summarization_prompt = f"""
         Please provide a comprehensive summary of the following document. 
         The summary should:
@@ -401,7 +400,24 @@ Please respond with ONLY the JSON object, nothing else.
     # Parse and return the LLM response
     return parse_llm_response(llm_response.text)
 
+def interact_with_user():
+    """
+    Interactive session with the user.
+    """
+    scenario = input("Describe your scenario: ")  # Initial user input
+    string=f'''\nThe user's responses until now:'''
+    while True:
+        result = answer_with_llm(scenario,string)
+        print(f"LLM: {result['response']}") 
+        #string=string+"\n"+result['response'] 
 
+        if result["status"] == 1:
+            print("Conversation ended.")
+            break
+        else:
+            # Otherwise, prompt the user for further clarification
+            scenario = input("Your clarification or follow-up: ")
+            string=string+"\n"+scenario
 
 
 
@@ -410,6 +426,7 @@ if __name__ == "__main__":
     query_system = DocumentQuerySystem(pdf_url)
     response = query_system.summarize()
     print(response)
+
     #print(str(response))
     # Cyber_obj=CybersecurityFindingsExtractor()
     # findings=Cyber_obj.extract_findings()
