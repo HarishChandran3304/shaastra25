@@ -27,7 +27,7 @@ class DocumentProcessor:
         self.nodes = None
         self.full_text=None
     def process_to_text(self):
-        md_text = pymupdf4llm.to_markdown(self.pdf_url)
+        md_text = pymupdf4llm.to_markdown(self.pdf_url,pages=[1,2,3,4,5,6,7,8,9,10,1])
         self.full_text=md_text
         # self.document = Document(text=md_text)
         # splitter = SentenceSplitter(chunk_size=1024)
@@ -58,16 +58,16 @@ class IndexBuilder:
         self.vector_index = VectorStoreIndex(self.nodes)
 
 class QueryEngineBuilder:
-    def __init__(self, summary_index, vector_index):
+    def __init__(self, vector_index):
         #self.summary_index = summary_index
         self.vector_index = vector_index
         self.query_engine = None
 
     def build_query_engine(self):
-        summary_query_engine = self.summary_index.as_query_engine(
-            response_mode="tree_summarize",
-            use_async=True,
-        )
+        # summary_query_engine = self.summary_index.as_query_engine(
+        #     response_mode="tree_summarize",
+        #     use_async=True,
+        # )
         vector_query_engine = self.vector_index.as_query_engine(vector_store_query_mode="mmr",vector_store_kwargs={"mmr_threshold":0.2})
 
         # summary_tool = QueryEngineTool.from_defaults(
@@ -298,6 +298,7 @@ if __name__ == "__main__":
     pdf_url = "/home/shadowx/shaastra25/backend/assets/NASDAQ_AAPL_2023.pdf"
     query_system = DocumentQuerySystem(pdf_url)
     response = query_system.summarize()
+    print(response)
     #print(str(response))
     # Cyber_obj=CybersecurityFindingsExtractor()
     # findings=Cyber_obj.extract_findings()
